@@ -1,72 +1,65 @@
 /**
  * ChatBox.jsx
- * A bottom-pinned, resizable chat box with avatar icons and icon-only buttons.
- * 
- * Key features:
- *  - Draggable top bar to resize the chat box height
- *  - Default user and assistant avatars from react-icons
- *  - Send button as an icon (paper plane)
- *  - Assistant action buttons also icons
+ * Uses react-markdown to display assistant messages as well-structured Markdown.
  */
 
 import React, { useState, useEffect } from 'react';
-import { FaUserCircle, FaRobot, FaPaperPlane, FaRedo, FaVolumeUp, FaCopy } from 'react-icons/fa';
+import {
+  FaUserCircle,
+  FaRobot,
+  FaPaperPlane,
+  FaRedo,
+  FaVolumeUp,
+  FaCopy
+} from 'react-icons/fa';
 
-export default function ChatBox() {
-  // Initial sample conversation
+// NEW: for nice Markdown rendering
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+
+import { sendMessageToBackend } from '../services/api'; 
+
+export default function ChatBox({ darkMode }) {
+  // Sample conversation
   const [messages, setMessages] = useState([
     {
-      role: 'Assistant',
-      content: "Hello! I'm DBIS-Tutor. How can I help you?",
-      avatar: null  // We'll use a default assistant icon if null
+      // Use lowercase "assistant" for consistent checks
+      role: 'assistant',
+      content: "Hello! I'm DBIS-Tutor. **How can I help you?**\n\n- Feel free to ask a question\n- Or say `hello`!",
+      avatar: null,
+      timestamp: '2025-01-28 23:42'
     },
-    {
-      role: 'User',
-      content: "I'm interested in the new knowledge graph course. Could you please help me?",
-      avatar: null  // We'll use a default user icon if null
-    },
-    {
-      role: 'Assistant',
-      content: "Sure, glad to do so. What's the question?",
-      avatar: null
-    }
   ]);
 
-  // The text input
   const [inputText, setInputText] = useState('');
 
-  // Resizable chat box state
-  const [height, setHeight] = useState(250);      // default height in px
+  // Resizable chat box
+  const [height, setHeight] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const [startY, setStartY] = useState(0);
-  const [startHeight, setStartHeight] = useState(250);
+  const [startHeight, setStartHeight] = useState(400);
 
-  // Mouse handlers for resizing
+  // Handle mouse down on the resize bar
   const handleMouseDown = (e) => {
     setIsResizing(true);
     setStartY(e.clientY);
     setStartHeight(height);
   };
 
+  // Mouse move => adjust height
   const handleMouseMove = (e) => {
     if (!isResizing) return;
-    // Calculate new height by dragging the top bar
     const newHeight = startHeight - (e.clientY - startY);
-    // You can clamp the min/max as desired:
-    if (newHeight < 100) {
-      setHeight(100);
-    } else if (newHeight > 600) {
-      setHeight(600);
-    } else {
-      setHeight(newHeight);
-    }
+    if (newHeight < 100) setHeight(100);
+    else if (newHeight > 800) setHeight(800);
+    else setHeight(newHeight);
   };
 
   const handleMouseUp = () => {
     setIsResizing(false);
   };
 
-  // Attach global mousemove/mouseup listeners only when isResizing = true
   useEffect(() => {
     if (isResizing) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -75,86 +68,120 @@ export default function ChatBox() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     }
-    // Cleanup
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
 
-  // Send a user message
-  const handleSend = () => {
+  // Send a message
+  async function handleSend() {
     const trimmed = inputText.trim();
     if (!trimmed) return;
-    // Add user message
-    setMessages([...messages, { role: 'User', content: trimmed, avatar: null }]);
+
+    // Clear input immediately
     setInputText('');
 
-    // (Optional) You might then call your backend for a response.
-    // For now, we just do local demonstration.
+    // Add user message
+    const userMessageObj = {
+      role: 'user',
+      content: trimmed,
+      timestamp: new Date().toLocaleString()
+    };
+    setMessages(prev => [...prev, userMessageObj]);
+
+    // Call backend
+    try {
+      const assistantReply = await sendMessageToBackend(trimmed);
+
+      // Add assistant message (which may contain Markdown)
+      const assistantMsgObj = {
+        role: 'assistant',
+        content: assistantReply,
+        timestamp: new Date().toLocaleString()
+      };
+      setMessages(prev => [...prev, assistantMsgObj]);
+    } catch (err) {
+      console.error('Error calling backend:', err);
+      // Optionally show an error bubble
+      const errorMsg = {
+        role: 'assistant',
+        content: "**[Error]** Couldn't fetch response. Please try again.",
+        timestamp: new Date().toLocaleString()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    }
+  }
+
+  // Container style
+  const containerStyle = {
+    position: 'absolute',
+    bottom: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '80%',
+    height: `${height}px`,
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    borderTopLeftRadius: '8px',
+    borderTopRightRadius: '8px',
+    background: darkMode ? '#2a2a2a' : 'rgba(255,255,255,0.9)',
+    color: darkMode ? '#fff' : '#000'
+  };
+
+  const handleStyle = {
+    background: darkMode ? '#444' : '#ddd',
+    cursor: 'row-resize',
+    height: '10px',
+    borderTopLeftRadius: '8px',
+    borderTopRightRadius: '8px'
   };
 
   return (
-    <div style={{ 
-      position: 'absolute',
-      bottom: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '80%',
-      // Use dynamic height so the user can resize
-      height: `${height}px`,
-      background: 'rgba(255,255,255,0.9)',
-      borderTopLeftRadius: '8px',
-      borderTopRightRadius: '8px',
-      boxSizing: 'border-box',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      {/* A draggable top bar */}
-      <div
-        style={{
-          background: '#ddd',
-          cursor: 'row-resize',
-          height: '10px',
-          borderTopLeftRadius: '8px',
-          borderTopRightRadius: '8px'
-        }}
-        onMouseDown={handleMouseDown}
-      ></div>
+    <div style={containerStyle}>
+      {/* Resize handle */}
+      <div style={handleStyle} onMouseDown={handleMouseDown}></div>
 
-      {/* The main chat area */}
+      {/* Message list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
         {messages.map((msg, idx) => (
-          <MessageBubble key={idx} message={msg} />
+          <MessageBubble key={idx} message={msg} darkMode={darkMode} />
         ))}
       </div>
 
-      {/* The input row */}
-      <div style={{ display: 'flex', padding: '8px', borderTop: '1px solid #ccc' }}>
+      {/* Input bar */}
+      <div style={{
+        display: 'flex',
+        padding: '8px',
+        borderTop: darkMode ? '1px solid #555' : '1px solid #ccc'
+      }}>
         <input
           style={{
             flex: 1,
             borderRadius: '4px',
-            border: '1px solid #ccc',
-            padding: '6px'
+            border: darkMode ? '1px solid #666' : '1px solid #ccc',
+            padding: '6px',
+            background: darkMode ? '#333' : '#fff',
+            color: darkMode ? '#eee' : '#000'
           }}
           placeholder="Type your message..."
           value={inputText}
-          onChange={e => setInputText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
         />
         <button
           style={{
             marginLeft: '8px',
             padding: '6px',
-            background: '#fff',
-            border: '1px solid #ccc',
+            background: darkMode ? '#333' : '#fff',
+            border: darkMode ? '1px solid #666' : '1px solid #ccc',
+            color: darkMode ? '#eee' : '#000',
             borderRadius: '4px',
             cursor: 'pointer'
           }}
           onClick={handleSend}
         >
-          {/* Icon-only send button */}
           <FaPaperPlane />
         </button>
       </div>
@@ -162,25 +189,17 @@ export default function ChatBox() {
   );
 }
 
-/**
- * Single message bubble component.
- * If role=Assistant, we show the "Regenerate", "Generate Audio", and "Copy" icons.
- * If avatar is null, we assign a default icon from react-icons.
- */
-function MessageBubble({ message }) {
-  const isAssistant = message.role === 'Assistant';
+/** Single message bubble */
+function MessageBubble({ message, darkMode }) {
+  const isAssistant = (message.role === 'assistant');
 
-  // Decide on avatar icon if none was provided
   let avatarIcon = null;
   if (message.avatar) {
-    // If you had a real image URL, you'd show an <img src={message.avatar} ... />
-    // but let's assume we always do icons for now
     avatarIcon = <img src={message.avatar} alt="avatar" style={styles.avatarImg} />;
   } else {
-    // No avatar => pick default icon
-    avatarIcon = isAssistant 
-      ? <FaRobot style={{ ...styles.avatarIcon, color: 'green' }} />
-      : <FaUserCircle style={{ ...styles.avatarIcon, color: 'blue' }} />;
+    avatarIcon = isAssistant
+      ? <FaRobot style={{ ...styles.avatarIcon, color: darkMode ? 'lime' : 'green' }} />
+      : <FaUserCircle style={{ ...styles.avatarIcon, color: darkMode ? '#bbb' : 'blue' }} />;
   }
 
   return (
@@ -190,38 +209,62 @@ function MessageBubble({ message }) {
       marginBottom: '10px',
       justifyContent: isAssistant ? 'flex-start' : 'flex-end'
     }}>
-      {/* If assistant, avatar on the left; if user, avatar on the right */}
-      {isAssistant && (
-        <div style={{ marginRight: '8px' }}>
-          {avatarIcon}
-        </div>
-      )}
+      {isAssistant && <div style={{ marginRight: '8px' }}>{avatarIcon}</div>}
 
-      {/* Speech bubble */}
       <div style={{
         ...styles.bubble,
-        backgroundColor: isAssistant ? '#e6f7ff' : '#fff2e8',
+        backgroundColor: isAssistant
+          ? (darkMode ? '#333944' : '#e6f7ff')
+          : (darkMode ? '#3a3a3a' : '#fff2e8'),
+        color: darkMode ? '#fff' : '#000',
         order: isAssistant ? '1' : '2'
       }}>
-        {message.content}
+        <div style={{ marginBottom: '4px', fontSize: '0.85rem', opacity: 0.7 }}>
+          {message.timestamp}
+        </div>
+
+        {/* If assistant, parse as Markdown using react-markdown */}
+        {isAssistant ? (
+          <div style={{ marginBottom: '4px' }}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <div style={{ marginBottom: '4px' }}>
+            {message.content}
+          </div>
+        )}
+
         {isAssistant && (
           <div style={styles.actionBar}>
-            {/* Icon-only action buttons */}
-            <button style={styles.actionBtn} title="Regenerate"><FaRedo /></button>
-            <button style={styles.actionBtn} title="Generate Audio"><FaVolumeUp /></button>
-            <button style={styles.actionBtn} title="Copy"><FaCopy /></button>
+            <button style={getActionBtnStyle(darkMode)} title="Regenerate"><FaRedo /></button>
+            <button style={getActionBtnStyle(darkMode)} title="Generate Audio"><FaVolumeUp /></button>
+            <button style={getActionBtnStyle(darkMode)} title="Copy"><FaCopy /></button>
           </div>
         )}
       </div>
 
-      {/* If user, put avatar on the right side */}
-      {!isAssistant && (
-        <div style={{ marginLeft: '8px' }}>
-          {avatarIcon}
-        </div>
-      )}
+      {!isAssistant && <div style={{ marginLeft: '8px' }}>{avatarIcon}</div>}
     </div>
   );
+}
+
+function getActionBtnStyle(darkMode) {
+  return {
+    background: darkMode ? '#333' : '#fff',
+    border: darkMode ? '1px solid #666' : '1px solid #ccc',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: darkMode ? '#eee' : '#000'
+  };
 }
 
 const styles = {
@@ -244,15 +287,5 @@ const styles = {
     marginTop: '6px',
     display: 'flex',
     gap: '4px'
-  },
-  actionBtn: {
-    background: '#fff',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    padding: '4px',
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center'
   }
 };

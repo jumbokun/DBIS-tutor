@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dbistutor_backend
+    ports:
+      - "7888:7888"    # If you want to access the backend directly (optional).
+    # If your backend needs environment variables, add them here:
+    environment:
+      - AZURA_API_KEY=some-key
+    # If your FastAPI code references `http://localhost:8000`, 
+    # you'll likely want to use the internal service name "backend" from the frontend.
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dbistutor_frontend
+    ports:
+      - "9999:80"
+    depends_on:
+      - backend
+    # If you need to configure the proxy or base URL to talk to the backend,
+    # do so in your Vite config or environment variables.

@@ -1,11 +1,7 @@
 /**
  * ChatHistoryPopup.jsx
- * Allows users to:
- *  - Add a new chat
- *  - Delete selected chats
- *  - Import / Export chat data
- * For simplicity, we store chat data in parent's state. 
- * A real app might fetch from or send to a backend.
+ * A unified dark-theme pop-up style, similar to SillyTavern's.
+ * Same structure as RolesPopup, but for chat history logic.
  */
 
 import React, { useState } from 'react';
@@ -15,13 +11,6 @@ export default function ChatHistoryPopup({
   setChatList,
   onClose
 }) {
-  /**
-   * props:
-   *  - chatList: array of { id, title, messages? }
-   *  - setChatList: function to update chatList in parent
-   *  - onClose: callback to close the popup
-   */
-
   const [selectedChatIds, setSelectedChatIds] = useState([]);
   const [newChatTitle, setNewChatTitle] = useState('');
 
@@ -49,13 +38,10 @@ export default function ChatHistoryPopup({
   }
 
   function handleExport() {
-    // This example simply converts chatList to JSON
     const dataStr = JSON.stringify(chatList, null, 2);
-    // You can create a blob download
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
-    // Create a temporary link and auto-click
     const link = document.createElement('a');
     link.href = url;
     link.download = 'chatHistory.json';
@@ -64,16 +50,14 @@ export default function ChatHistoryPopup({
     document.body.removeChild(link);
   }
 
-  function handleImport(event) {
-    // For demonstration: read a JSON file and parse it
-    const file = event.target.files[0];
+  function handleImport(e) {
+    const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (ev) => {
       try {
-        const importedData = JSON.parse(e.target.result);
-        // Merge or overwrite existing chatList as needed
+        const importedData = JSON.parse(ev.target.result);
         setChatList(importedData);
       } catch (err) {
         console.error('Failed to parse file.', err);
@@ -83,73 +67,124 @@ export default function ChatHistoryPopup({
   }
 
   return (
-    <div style={styles.popupOverlay}>
-      <div style={styles.popupContent}>
-        <h2>Chat History</h2>
-        
-        {/* Add new chat */}
-        <div style={{ marginBottom: '10px' }}>
-          <input
-            type="text"
-            placeholder="New chat title"
-            value={newChatTitle}
-            onChange={e => setNewChatTitle(e.target.value)}
-          />
-          <button onClick={handleAddChat}>Add Chat</button>
+    <div style={styles.overlay}>
+      <div style={styles.popup}>
+        <div style={styles.header}>
+          <h2 style={styles.title}>Chat History</h2>
+          <button style={styles.closeBtn} onClick={onClose}>
+            &times;
+          </button>
         </div>
 
-        {/* Chat list with checkboxes for selection */}
-        <div style={{ marginBottom: '10px', maxHeight: '100px', overflowY: 'auto' }}>
-          {chatList.map(chat => (
-            <div key={chat.id}>
-              <input
-                type="checkbox"
-                checked={selectedChatIds.includes(chat.id)}
-                onChange={() => toggleChatSelection(chat.id)}
-              />
-              <label>{chat.title}</label>
-            </div>
-          ))}
+        <div style={styles.body}>
+          {/* Add new chat */}
+          <div style={{ marginBottom: '12px' }}>
+            <input
+              type="text"
+              style={styles.input}
+              placeholder="New chat title"
+              value={newChatTitle}
+              onChange={e => setNewChatTitle(e.target.value)}
+            />
+            <button style={styles.actionBtn} onClick={handleAddChat}>
+              Add Chat
+            </button>
+          </div>
+
+          {/* Chat list with checkboxes */}
+          <div style={{ marginBottom: '12px', maxHeight: '100px', overflowY: 'auto' }}>
+            {chatList.map(chat => (
+              <div key={chat.id} style={{ marginBottom: '6px' }}>
+                <input
+                  type="checkbox"
+                  checked={selectedChatIds.includes(chat.id)}
+                  onChange={() => toggleChatSelection(chat.id)}
+                  style={{ marginRight: '6px' }}
+                />
+                <label>{chat.title}</label>
+              </div>
+            ))}
+          </div>
+
+          {/* Delete selected */}
+          <button style={{ ...styles.actionBtn, marginBottom: '12px' }} onClick={handleDeleteSelected}>
+            Delete Selected
+          </button>
+
+          {/* Import / Export */}
+          <div style={{ marginBottom: '12px' }}>
+            <button style={styles.actionBtn} onClick={handleExport}>Export</button>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              style={{ display: 'inline-block', marginLeft: '10px' }}
+            />
+          </div>
         </div>
-
-        {/* Delete selected chats */}
-        <button style={{ marginBottom: '10px' }} onClick={handleDeleteSelected}>
-          Delete Selected
-        </button>
-
-        {/* Import / Export buttons */}
-        <div style={{ marginBottom: '10px' }}>
-          <button onClick={handleExport}>Export</button>
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImport}
-            style={{ display: 'inline-block', marginLeft: '10px' }}
-          />
-        </div>
-
-        <button onClick={onClose}>Close</button>
       </div>
     </div>
   );
 }
 
 const styles = {
-  popupOverlay: {
-    position: 'fixed', 
-    top: 0, 
-    left: 0, 
-    width: '100vw', 
-    height: '100vh', 
-    background: 'rgba(0,0,0,0.4)',
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(0, 0, 0, 0.5)',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    zIndex: 9999
   },
-  popupContent: {
-    background: '#fff',
-    padding: '20px',
+  popup: {
+    background: '#2e2e2e',
+    color: '#fff',
+    width: '400px',
     borderRadius: '8px',
-    minWidth: '300px'
+    boxShadow: '0 0 15px rgba(0,0,0,0.5)',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden'
+  },
+  header: {
+    background: '#444',
+    padding: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  title: {
+    margin: 0,
+    fontSize: '1.2rem'
+  },
+  closeBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#fff',
+    fontSize: '1.3rem',
+    cursor: 'pointer'
+  },
+  body: {
+    padding: '12px'
+  },
+  input: {
+    padding: '6px',
+    marginRight: '6px',
+    borderRadius: '4px',
+    border: '1px solid #666',
+    background: '#3a3a3a',
+    color: '#fff'
+  },
+  actionBtn: {
+    padding: '6px 12px',
+    border: '1px solid #666',
+    background: '#555',
+    color: '#fff',
+    borderRadius: '4px',
+    cursor: 'pointer'
   }
 };
