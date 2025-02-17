@@ -16,12 +16,11 @@ Assistant:
     try:
         resp = requests.post("http://chat.corinth.informatik.rwth-aachen.de/completions", json={
             "prompt": prompt,
-            "model": "deepseek-r1:70b",      # 需要根据你实际安装的模型名称
+            "model": "deepseek-r1:70b",
             "temperature": 0.7,
         })
         resp.raise_for_status()
         data = resp.json()
-        # 具体返回结构需根据Ollama版本进行解析
         text = data.get("completion", "")  # 假设
         return text
     except Exception as e:

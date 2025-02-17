@@ -15,15 +15,15 @@
     # Build for production
     RUN npm run build
     
-    # --- Stage 2: serve with Nginx ---
-    FROM nginx:alpine
+    # # --- Stage 2: serve with Nginx ---
+    # FROM nginx:alpine
     
-    # Copy compiled build from stage 1 to /usr/share/nginx/html
-    COPY --from=build /app/dist /usr/share/nginx/html
+    # # Copy compiled build from stage 1 to /usr/share/nginx/html
+    # COPY --from=build /app/dist /usr/share/nginx/html
     
-    # Expose port 80 inside container
-    EXPOSE 80
+    # # Expose port 80 inside container
+    # EXPOSE 80
     
-    # By default, nginx runs on port 80
-    CMD ["nginx", "-g", "daemon off;"]
-    
+    # # By default, nginx runs on port 80
+    # CMD ["nginx", "-g", "daemon off;"]
+    RUN npm run dev
